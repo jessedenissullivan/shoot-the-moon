@@ -1,9 +1,29 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+from matplotlib.patches import Circle
 from matplotlib.animation import FuncAnimation
 from matplotlib.lines import Line2D
+
+import socket
+
+# Define dedicated port
+port = ('localhost', 12345)
+
+# Create a socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+# Bind the socket to a port
+s.bind(port)
+
+print(f"Binding {port} and waiting for connection.")
+# Listen for incoming connections
+s.listen(1)
+print(f"Connection received.")
+
+# Accept a connection and make it non-blocking
+conn, addr = s.accept()
+conn.setblocking(0)
 
 # Parameters
 ball_diameter = 2.5  # cm
@@ -31,7 +51,7 @@ ax.add_line(top_rod)
 ax.add_line(bottom_rod)
 
 # Create the ball
-ball = patches.Circle((0, 0), ball_diameter / 2, fc='b')
+ball = Circle((0, 0), ball_diameter / 2, fc='b')
 ax.add_patch(ball)
 
 # Set the x and y limits to fix the animation frame
@@ -49,6 +69,15 @@ def update(frame):
     global gravity
     global ball, ani
 
+    # Read an angle value from the connection
+    try:
+        # Try to read an angle value from the connection
+        angle = float(conn.recv(1024))
+    except BlockingIOError:
+        pass
+    except ValueError:
+        pass
+
     # Calculate forces
     ratio = (np.sin(np.deg2rad(angle)) * max(position[0], 1))
     grad = ratio + 1
@@ -61,6 +90,7 @@ def update(frame):
     # Update velocity and position
     velocity += acceleration * dt
     position += velocity * dt
+    print(f"Position: {position}")
 
     # hard-code X position of ball to 0 as a simulation of the backboard
     position[0] = 0.0 if position[0] < 0 else position[0]
